@@ -91,16 +91,51 @@ for(const j of J){if(j.addr){const r=await calcDist(j.addr);j.dist=r.dist;j.ofc=
 b.textContent='🤖 배정 중...';
 const bd={};J.forEach(j=>{if(!bd[j.date])bd[j.date]=[];bd[j.date].push(j)});
 const ed={};E.forEach(e=>ed[e]=0);A={};
+// 팀 조합 기록 (로테이션용)
+const pairCount={};
+E.forEach(a=>E.forEach(b=>{if(a<b)pairCount[a+'+'+b]=0}));
+
 for(const date of Object.keys(bd).sort()){
 const dj=bd[date];const ao=new Set();dj.forEach(j=>j.doff.forEach(n=>ao.add(n)));
 const av=E.filter(e=>!ao.has(e));if(!av.length)continue;
 const am=dj.filter(j=>j.time==='오전').sort((a,b)=>b.dist-a.dist);
 const pm=dj.filter(j=>j.time==='오후').sort((a,b)=>b.dist-a.dist);
-function mk(pool,jobCnt){const s=[...pool].sort((a,b)=>ed[a]-ed[b]);const t=[];if(jobCnt>=s.length){s.forEach(e=>t.push([e]))}else{for(let i=0;i<s.length;i+=2){if(i+1<s.length)t.push([s[i],s[i+1]]);else t.push([s[i]])}}return t}
-function asg(sl,pool){if(!sl.length||!pool.length)return;const t=mk(pool,sl.length);sl.forEach((j,i)=>{if(i<t.length){A[j.id]=t[i];t[i].forEach(e=>ed[e]+=j.dist)}})}asg(am,av);
+
+function mk(pool,jobCnt){
+const s=[...pool].sort((a,b)=>ed[a]-ed[b]);
+const t=[];
+if(jobCnt>=s.length){
+  // 1인 1팀
+  s.forEach(e=>t.push([e]));
+}else{
+  // 2인 1팀 - 로테이션: 가장 적게 함께한 조합 우선
+  const used=new Set();
+  const pairs=[];
+  for(let i=0;i<s.length;i++){
+    for(let j=i+1;j<s.length;j++){
+      const key=s[i]<s[j]?s[i]+'+'+s[j]:s[j]+'+'+s[i];
+      pairs.push({a:s[i],b:s[j],cnt:pairCount[key]||0});
+    }
+  }
+  pairs.sort((a,b)=>a.cnt-b.cnt);
+  for(const p of pairs){
+    if(!used.has(p.a)&&!used.has(p.b)){
+      t.push([p.a,p.b]);used.add(p.a);used.add(p.b);
+      const key=p.a<p.b?p.a+'+'+p.b:p.b+'+'+p.a;
+      pairCount[key]=(pairCount[key]||0)+1;
+    }
+  }
+  s.forEach(e=>{if(!used.has(e))t.push([e])});
+}
+return t}
+
+function asg(sl,pool){if(!sl.length||!pool.length)return;const t=mk(pool,sl.length);sl.forEach((j,i)=>{if(i<t.length){A[j.id]=t[i];t[i].forEach(e=>ed[e]+=j.dist)}})}
+asg(am,av);
 const ua=new Set();am.forEach(j=>{if(A[j.id])A[j.id].forEach(e=>ua.add(e))});
 const pp=av.sort((a,b)=>{const x=ua.has(a)?1:0,y=ua.has(b)?1:0;if(x!==y)return x-y;return ed[a]-ed[b]});
 asg(pm,pp)}
+// 거리 데이터 로컬 저장
+localStorage.setItem('sc2_jobs',JSON.stringify(J));
 ss();b.textContent='🤖 자동 배정 (공정 거리 배분)';b.classList.remove('loading');
 toast('✅ 자동 배정 완료!');renderW();renderF()}
 
@@ -136,10 +171,17 @@ const md=Math.max(...Object.values(es).map(s=>s.d),1);const mc=Math.max(...Objec
 const cl=['var(--blue)','var(--green)','var(--yellow)','var(--pink)','var(--purple)','var(--orange)'];
 const dists=E.map(e=>es[e].d);const avg=dists.reduce((a,b)=>a+b,0)/dists.length;
 const mxd=Math.max(...dists.map(d=>Math.abs(d-avg)));const sc=avg>0?Math.max(0,Math.round(100-mxd/avg*100)):100;
+const hasDist=dists.some(d=>d>0);
+// 팀 조합 횟수 계산
+const pc={};
+J.forEach(j=>{const t=A[j.id];if(t&&t.length===2){const key=t[0]<t[1]?t[0]+'+'+t[1]:t[1]+'+'+t[0];pc[key]=(pc[key]||0)+1}});
+const pairHtml=Object.entries(pc).sort((a,b)=>b[1]-a[1]).map(([k,v])=>'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:13px">'+k.replace('+',' + ')+'</span><span style="font-weight:700;font-size:13px">'+v+'회</span></div>').join('')||'<div style="color:var(--text2);font-size:12px">자동 배정을 먼저 실행하세요</div>';
+
 document.getElementById('fv').innerHTML=
-'<div class="fair-chart"><div style="font-size:13px;font-weight:700;margin-bottom:10px">📏 총 이동거리</div>'+E.map((e,i)=>{const s=es[e];const w=Math.round(s.d/md*100);return '<div class="fair-row"><span class="fair-name">'+e+'</span><div class="fair-bar"><div class="fair-fill" style="width:'+Math.max(w,8)+'%;background:'+cl[i%6]+'">'+s.d+'</div></div><span class="fair-val">'+s.d+'km</span></div>'}).join('')+'</div>'+
+'<div class="fair-chart"><div style="text-align:center;padding:10px"><div style="font-size:11px;color:var(--text2)">공정성 점수</div><div style="font-size:42px;font-weight:900;color:'+(sc>=80?'var(--green)':sc>=60?'var(--yellow)':'var(--red)')+'">'+sc+'<span style="font-size:16px">점</span></div><div style="font-size:11px;color:var(--text2)">거리 편차 '+Math.round(mxd)+'km</div></div></div>'+
+(hasDist?'<div class="fair-chart"><div style="font-size:13px;font-weight:700;margin-bottom:10px">📏 총 이동거리</div>'+E.map((e,i)=>{const s=es[e];const w=Math.round(s.d/md*100);return '<div class="fair-row"><span class="fair-name">'+e+'</span><div class="fair-bar"><div class="fair-fill" style="width:'+Math.max(w,8)+'%;background:'+cl[i%6]+'">'+s.d+'</div></div><span class="fair-val">'+s.d+'km</span></div>'}).join('')+'</div>':'<div class="fair-chart"><div style="color:var(--text2);font-size:12px;padding:10px">🤖 자동 배정 버튼을 먼저 눌러야 거리가 계산됩니다</div></div>')+
 '<div class="fair-chart"><div style="font-size:13px;font-weight:700;margin-bottom:10px">📊 시공 건수</div>'+E.map((e,i)=>{const s=es[e];const w=Math.round(s.c/mc*100);return '<div class="fair-row"><span class="fair-name">'+e+'</span><div class="fair-bar"><div class="fair-fill" style="width:'+Math.max(w,8)+'%;background:'+cl[i%6]+'">'+s.c+'</div></div><span class="fair-val">'+s.c+'건</span></div>'}).join('')+'</div>'+
-'<div class="fair-chart"><div style="text-align:center;padding:10px"><div style="font-size:11px;color:var(--text2)">공정성 점수</div><div style="font-size:36px;font-weight:900;color:'+(sc>=80?'var(--green)':sc>=60?'var(--yellow)':'var(--red)')+'">'+sc+'<span style="font-size:16px">점</span></div><div style="font-size:11px;color:var(--text2)">거리 편차 '+Math.round(mxd)+'km</div></div></div>'}
+'<div class="fair-chart"><div style="font-size:13px;font-weight:700;margin-bottom:10px">🤝 팀 조합 횟수</div>'+pairHtml+'</div>'}
 
 function renderE(){document.getElementById('el').innerHTML=E.map((e,i)=>'<div class="emp-chip ec'+i%6+'">'+e+'<button class="emp-remove" onclick="re(\''+e+'\')">×</button></div>').join('')}
 function addEmp(){const n=document.getElementById('ne');const v=n.value.trim();if(!v||E.includes(v)){toast('이름 확인');return}E.push(v);n.value='';sl();renderE();toast(v+' 추가!')}
@@ -150,7 +192,12 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.sty
 async function init(){
 document.getElementById('sub').textContent='불러오는 중...';
 await sld();
-try{const r=await fetch(CSV);const t=await r.text();parseCSV(t);document.getElementById('sub').textContent='✅ '+J.length+'건 · 직원 '+E.length+'명'}catch(e){document.getElementById('sub').textContent='⚠️ 연결 실패: '+e.message}
+try{const r=await fetch(CSV);const t=await r.text();parseCSV(t);
+// 저장된 거리 데이터 복원
+try{const saved=JSON.parse(localStorage.getItem('sc2_jobs')||'[]');
+const distMap={};saved.forEach(s=>{if(s.dist)distMap[s.id]=s.dist});
+J.forEach(j=>{if(distMap[j.id])j.dist=distMap[j.id]})}catch(e){}
+document.getElementById('sub').textContent='✅ '+J.length+'건 · 직원 '+E.length+'명'}catch(e){document.getElementById('sub').textContent='⚠️ 연결 실패: '+e.message}
 renderW()}
 init();
 </script>
