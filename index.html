@@ -83,7 +83,7 @@ if(!r[0]||!r[1])continue;
 const doff=[];for(let j=8;j<=13;j++){if(r[j]&&r[j].trim())doff.push(r[j].trim())}
 const mat=[];if(r[5]&&parseInt(r[5])>0)mat.push({t:'마블',q:parseInt(r[5])});if(r[6]&&parseInt(r[6])>0)mat.push({t:'코튼',q:parseInt(r[6])});if(r[7]&&parseInt(r[7])>0)mat.push({t:'모던',q:parseInt(r[7])});
 let ds=r[1];if(ds.length===8)ds=ds.slice(0,4)+'-'+ds.slice(4,6)+'-'+ds.slice(6,8);
-J.push({id:ds+'_'+r[0]+'_'+i,time:r[0],addr:r[2]||'',date:ds,py:r[3]||'',scope:r[4]||'',doff,mat,dist:0,ofc:''})}}}
+J.push({id:ds+'_'+r[0]+'_'+i,time:r[0],addr:r[2]||'',date:ds,py:r[3]||'',scope:r[4]||'',doff,mat,dist:0,ofc:''})}}
 
 async function autoAssign(){
 const b=document.getElementById('abtn');b.textContent='⏳ 거리 계산 중...';b.classList.add('loading');
