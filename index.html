@@ -96,9 +96,8 @@ const dj=bd[date];const ao=new Set();dj.forEach(j=>j.doff.forEach(n=>ao.add(n)))
 const av=E.filter(e=>!ao.has(e));if(!av.length)continue;
 const am=dj.filter(j=>j.time==='오전').sort((a,b)=>b.dist-a.dist);
 const pm=dj.filter(j=>j.time==='오후').sort((a,b)=>b.dist-a.dist);
-function mk(pool){const s=[...pool].sort((a,b)=>ed[a]-ed[b]);const t=[];for(let i=0;i<s.length;i+=2){if(i+1<s.length)t.push([s[i],s[i+1]]);else t.push([s[i]])}return t}
-function asg(sl,pool){if(!sl.length||!pool.length)return;const t=mk(pool);sl.forEach((j,i)=>{if(i<t.length){A[j.id]=t[i];t[i].forEach(e=>ed[e]+=j.dist)}})}
-asg(am,av);
+function mk(pool,jobCnt){const s=[...pool].sort((a,b)=>ed[a]-ed[b]);const t=[];if(jobCnt>=s.length){s.forEach(e=>t.push([e]))}else{for(let i=0;i<s.length;i+=2){if(i+1<s.length)t.push([s[i],s[i+1]]);else t.push([s[i]])}}return t}
+function asg(sl,pool){if(!sl.length||!pool.length)return;const t=mk(pool,sl.length);sl.forEach((j,i)=>{if(i<t.length){A[j.id]=t[i];t[i].forEach(e=>ed[e]+=j.dist)}})}asg(am,av);
 const ua=new Set();am.forEach(j=>{if(A[j.id])A[j.id].forEach(e=>ua.add(e))});
 const pp=av.sort((a,b)=>{const x=ua.has(a)?1:0,y=ua.has(b)?1:0;if(x!==y)return x-y;return ed[a]-ed[b]});
 asg(pm,pp)}
