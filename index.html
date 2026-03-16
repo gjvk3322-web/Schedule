@@ -136,26 +136,35 @@ function getTeamColor(idx){return idx>=0?idx%4:0}
 function autoAssign(){
 if(!teams.length){toast('👥 팀 설정을 먼저 해주세요');sw('team');return}
 const bd={};J.forEach(j=>{if(!bd[j.date])bd[j.date]=[];bd[j.date].push(j)});
-A={};
+// 기존 배정은 유지! 미배정만 새로 배정
 const teamDist=teams.map(()=>0);
+// 기존 배정된 거리 먼저 계산
+J.forEach(j=>{const t=A[j.id];if(t){const ti=teams.findIndex(tm=>tm.some(m=>t.includes(m)));if(ti>=0)teamDist[ti]+=j.dist||0}});
 for(const date of Object.keys(bd).sort()){
 const dj=bd[date];
 const ao=new Set();dj.forEach(j=>j.doff.forEach(n=>ao.add(n)));
-// 가용 팀 (팀원 중 한 명이라도 출근 가능한 팀)
 const avTeams=teams.map((t,i)=>({idx:i,members:t.filter(m=>!ao.has(m)),full:t})).filter(t=>t.members.length>0);
 if(!avTeams.length)continue;
-// 누적거리 적은 팀 먼저
 avTeams.sort((a,b)=>teamDist[a.idx]-teamDist[b.idx]);
 const am=dj.filter(j=>j.time==='오전'||j.time.includes('2:'));
 const pm=dj.filter(j=>j.time==='오후');
 function assignSlot(slot){
-slot.forEach((j,i)=>{
-if(i<avTeams.length){
-A[j.id]=avTeams[i].members;
-teamDist[avTeams[i].idx]+=j.dist||0;
-}})}
+// 이미 배정된 팀은 사용 중으로 표시
+const usedTeams=new Set();
+slot.forEach(j=>{if(A[j.id]){const ti=avTeams.findIndex(t=>t.members.some(m=>A[j.id].includes(m)));if(ti>=0)usedTeams.add(ti)}});
+const freeTeams=avTeams.filter((t,i)=>!usedTeams.has(i));
+let fi=0;
+slot.forEach(j=>{
+if(!A[j.id]&&fi<freeTeams.length){
+A[j.id]=freeTeams[fi].members;
+teamDist[freeTeams[fi].idx]+=j.dist||0;
+fi++}})}
 assignSlot(am);assignSlot(pm)}
-ss();toast('✅ 자동 배정 완료!');render()}
+ss();toast('✅ 미배정 건 자동 배정 완료!');render()}
+
+function resetAssign(){
+if(!confirm('모든 배정을 초기화하고 다시 짤까요?'))return;
+A={};autoAssign()}
 
 // ====== 캘린더 ======
 function renderCal(){
@@ -169,6 +178,7 @@ const today=new Date();const todayStr=today.getFullYear()+'-'+String(today.getMo
 const bd={};J.forEach(j=>{if(!bd[j.date])bd[j.date]=[];bd[j.date].push(j)});
 
 let nav=`<div class="cal-nav"><button onclick="calMonth--;if(calMonth<0){calMonth=11;calYear--}render()">◀</button><span>${calYear}년 ${calMonth+1}월</span><button onclick="calMonth++;if(calMonth>11){calMonth=0;calYear++}render()">▶</button></div>`;
+nav+=`<div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn btn-blue" onclick="autoAssign()" style="flex:2">🤖 미배정만 자동 배정</button><button class="btn" style="flex:1;background:var(--bg3);color:var(--red);border:1px solid rgba(248,113,113,.3)" onclick="resetAssign()">🔄 전체 초기화</button></div>`;
 
 let grid='<div class="cal-grid">';
 dw.forEach(d=>grid+=`<div class="cal-hdr">${d}</div>`);
@@ -213,7 +223,7 @@ const remain=7-((startDay+days)%7);
 if(remain<7)for(let i=0;i<remain;i++)grid+='<div class="cal-cell empty"></div>';
 grid+='</div>';
 
-document.getElementById('calView').innerHTML=nav+'<button class="btn btn-blue" style="margin-bottom:12px" onclick="autoAssign()">🤖 자동 배정</button>'+grid}
+document.getElementById('calView').innerHTML=nav+grid}
 
 // ====== 리스트 ======
 function renderList(){
