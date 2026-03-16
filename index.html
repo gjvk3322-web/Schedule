@@ -108,7 +108,7 @@ let calMonth=new Date().getMonth();
 let calYear=new Date().getFullYear();
 
 function sv(){localStorage.setItem('s3_e',JSON.stringify(E));localStorage.setItem('s3_teams',JSON.stringify(teams));localStorage.setItem('s3_dc',JSON.stringify(DC))}
-function ss(){fetch(SYNC,{method:'POST',body:JSON.stringify({A,teams}),mode:'no-cors'}).catch(()=>{})}
+function ss(){const d=encodeURIComponent(JSON.stringify({A,teams}));fetch(SYNC+'?data='+d).catch(()=>{})}
 async function sl(){try{const r=await fetch(SYNC);const d=await r.json();if(d&&typeof d==='object'){if(d.A)A=d.A;if(d.teams)teams=d.teams}}catch(e){}}
 
 // 거리
