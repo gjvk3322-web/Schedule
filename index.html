@@ -46,7 +46,7 @@
 <div class="content" id="t-emp"><div class="section-title">👷 직원 관리</div><div class="emp-list" id="el"></div><div class="add-row"><input type="text" id="ne" placeholder="새 직원 이름"><button onclick="addEmp()">추가</button></div></div>
 <div class="toast" id="toast"></div>
 <script>
-const CSV='https://docs.google.com/spreadsheets/d/e/2PACX-1vSCesE4iG_1NhRL9GXC7yV7320sBCgOZt9udsY_arhiH8WcnmC9CV5M-k4zNYHr0_L-zhQjDg0O1Urm/pub?output=csv';
+const CSV='https://docs.google.com/spreadsheets/d/1dhcmDkkDGe3Bw4jY3vfPcJGq5H-EGhB3mL4BXqgJiBQ/gviz/tq?tqx=out:csv';
 const SYNC='https://script.google.com/macros/s/AKfycbwINWcVy3zrz-OYyasjY0eZzt9oHv6zKqKzC5ZJQ0qc3bTNl0lXwWN1QzpcBu-80lYz-Q/exec';
 const MK='AIzaSyAEz2OXudxNoTTn2ueFKWm7KGSnwDW83mw';
 const OFF={busan:{name:'부산',lat:35.1253,lng:128.9736},ansan:{name:'안산',lat:37.3159,lng:126.8233}};
@@ -72,8 +72,14 @@ function getOff(addr){return BR.some(r=>addr.includes(r))?OFF.busan:OFF.ansan}
 async function calcDist(addr){const o=getOff(addr);const c=await geo(addr);if(!c)return{dist:0,office:o.name};return{dist:Math.round(hav(o.lat,o.lng,c.lat,c.lng)),office:o.name}}
 
 function parseCSV(text){
-const lines=text.split('\n').map(l=>l.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
-J=[];for(let i=1;i<lines.length;i++){const r=lines[i];if(!r[0]||!r[1])continue;
+const lines=text.split('\n');
+J=[];for(let i=1;i<lines.length;i++){
+// 따옴표 안의 쉼표 처리
+const r=[];let cur='',inQ=false;
+for(let c=0;c<lines[i].length;c++){const ch=lines[i][c];
+if(ch==='"'){inQ=!inQ}else if(ch===','&&!inQ){r.push(cur.trim().replace(/^"|"$/g,''));cur=''}else{cur+=ch}}
+r.push(cur.trim().replace(/^"|"$/g,''));
+if(!r[0]||!r[1])continue;
 const doff=[];for(let j=8;j<=13;j++){if(r[j]&&r[j].trim())doff.push(r[j].trim())}
 const mat=[];if(r[5]&&parseInt(r[5])>0)mat.push({t:'마블',q:parseInt(r[5])});if(r[6]&&parseInt(r[6])>0)mat.push({t:'코튼',q:parseInt(r[6])});if(r[7]&&parseInt(r[7])>0)mat.push({t:'모던',q:parseInt(r[7])});
 let ds=r[1];if(ds.length===8)ds=ds.slice(0,4)+'-'+ds.slice(4,6)+'-'+ds.slice(6,8);
@@ -145,7 +151,7 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.sty
 async function init(){
 document.getElementById('sub').textContent='불러오는 중...';
 await sld();
-try{const r=await fetch(CSV);const t=await r.text();parseCSV(t);document.getElementById('sub').textContent='✅ '+J.length+'건 · 직원 '+E.length+'명'}catch(e){document.getElementById('sub').textContent='⚠️ 연결 실패'}
+try{const r=await fetch(CSV);const t=await r.text();parseCSV(t);document.getElementById('sub').textContent='✅ '+J.length+'건 · 직원 '+E.length+'명'}catch(e){document.getElementById('sub').textContent='⚠️ 연결 실패: '+e.message}
 renderW()}
 init();
 </script>
